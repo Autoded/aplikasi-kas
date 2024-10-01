@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday, My Love</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Background Music (Optional) -->
+    <audio id="bg-music" src="video/last.mp3" loop></audio>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="#home" class="nav-link">Home</a>
+        <a href="#gallery" class="nav-link">Gallery</a>
+        <a href="#letter" class="nav-link">Love Letter</a>
+        <a href="#video" class="nav-link">Special Video</a>
+        <a href="#memories" class="nav-link">Memory Calendar</a>
+    </nav>
+
+    <!-- Halaman Utama -->
+    <section id="home" class="section home">
+        <h1 class="title">Happy Birthday and Happy Anniversary 2nd, My Love</h1>
+        <p class="subtitle">Selamat ulang tahun dan Anniversary sayangcuu ucucucucucu, semoga di umur kamu yang ke 22 ini menjadikan kamu lebih dewasa lagi, lebih kuat lagi, lebih banyak lagi rejekinya ayongcuu
+            doaku cuman 1, jadi diri kamu sendiri ya sayangkuuu cintakuu, tetep semangat tyusss di umur kamu yang udah tua inii wleee :p 
+        </p>
+        <button class="main-button" onclick="scrollToSection('gallery')">Start the Journey</button>
+        <button class="music-button" onclick="toggleMusic()">Play Music</button>
+    </section>
+
+    <!-- Galeri Kenangan -->
+    <section id="gallery" class="section gallery">
+        <h2 class="section-title">Our Sweet Memories</h2>
+        <div class="photo-gallery">
+            <img src="img/photo1.jpg" alt="Memory 1">
+            <img src="img/photo2.jpg" alt="Memory 2">
+            <img src="img/photo3.jpg" alt="Memory 3">
+            <img src="img/photo4.jpg" alt="Memory 4">
+            <img src="img/photo5.jpg" alt="Memory 5">
+            <img src="img/photo6.jpg" alt="Memory 6">
+            <!-- Tambahkan foto lainnya -->
+        </div>
+    </section>
+
+    <!-- Surat Cinta -->
+    <section id="letter" class="section letter">
+        <h2 class="section-title">Love Letter Just For You</h2>
+        <div class="letter-content">
+            <p>Sayangku,</p>
+            <p>Makasih ya, udah mau sama bocil selama 2 tahun inii, dari sedih seneng susah kita lewatin bareng", semoga kedepannya kita makin bisa mengerti 1 sama lainnyo ya sayang cuu</3></p>
+            <p>Aku sayang kamu, Isrina Oktavia Nur Jannah</p>
+        </div>
+    </section>
+
+    <!-- Video Ucapan -->
+    <section id="video" class="section video">
+        <h2 class="section-title">Special Message for You</h2>
+        <video controls>
+            <source src="video/india.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </section>
+
+    <!-- Kalender Kenangan -->
+    <section id="memories" class="section memories">
+        <h2 class="section-title">Our Memory Calendar</h2>
+        <table class="memory-calendar">
+            <tr>
+                <th>Date</th>
+                <th>Memory</th>
+            </tr>
+            <tr>
+                <td>Oct 4, 2022</td>
+                <td>Pacaran :v</td>
+            </tr>
+            <!-- Tambahkan kenangan lainnya -->
+        </table>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>With all my love, forever and always ❤️</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

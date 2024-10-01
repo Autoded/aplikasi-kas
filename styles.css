@@ -1,0 +1,184 @@
+/* Gaya dasar */
+body {
+    font-family: 'Dancing Script', cursive;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(120deg, #ffecd2, #fcb69f);
+    color: #333;
+    scroll-behavior: smooth;
+}
+
+/* Navbar */
+.navbar {
+    background-color: rgba(255, 204, 203, 0.8);
+    padding: 10px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-link {
+    margin: 0 15px;
+    color: #d96459;
+    text-decoration: none;
+    font-size: 1.2em;
+}
+
+.nav-link:hover {
+    color: #c2463b;
+}
+
+/* Bagian utama (Home) */
+.home {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+    color: #fff;
+    background: url('img/romantic-background.jpg') no-repeat center center/cover;
+}
+
+.title {
+    font-size: 4em;
+    margin-bottom: 20px;
+}
+
+.subtitle {
+    font-size: 1.5em;
+    margin-bottom: 40px;
+    max-width: 600px;
+}
+
+.main-button {
+    padding: 15px 30px;
+    background-color: #d96459;
+    color: white;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    border-radius: 25px;
+    margin-top: 20px;
+    transition: background-color 0.3s ease;
+}
+
+.main-button:hover {
+    background-color: #c2463b;
+}
+
+.music-button {
+    margin-top: 20px;
+    background: #fff;
+    border: 2px solid #d96459;
+    padding: 10px 20px;
+    font-size: 1.2em;
+    cursor: pointer;
+    border-radius: 25px;
+    color: #d96459;
+}
+
+.music-button:hover {
+    background-color: #ffefef;
+}
+
+/* Bagian Galeri */
+.gallery {
+    background-color: #fff;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.section-title {
+    font-size: 3em;
+    color: #d96459;
+    margin-bottom: 40px;
+}
+
+.photo-gallery {
+    display: center;
+    justify-content: safe center;
+    gap: 20px;
+}
+
+.photo-gallery img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 15px;
+    transition: transform 0.3s ease;
+}
+
+.photo-gallery img:hover {
+    transform: scale(1.1);
+}
+
+/* Bagian Surat Cinta */
+.letter {
+    background-color: #fce4ec;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.letter-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.8;
+}
+
+/* Video Ucapan */
+.video {
+    background-color: #fff;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.video video {
+    width: 80%;
+    max-width: 800px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Kalender Kenangan */
+.memories {
+    background-color: #ffefef;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.memory-calendar {
+    width: 80%;
+    max-width: 800px;
+    margin: 0 auto;
+    border-collapse: collapse;
+}
+
+.memory-calendar th, .memory-calendar td {
+    border: 1px solid #d96459;
+    padding: 15px;
+}
+
+th {
+    background-color: #d96459;
+    color: white;
+}
+
+td {
+    background-color: #fff;
+    color: #333;
+}
+
+/* Footer */
+footer {
+    background-color: #d96459;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    font-size: 1.2em;
+}

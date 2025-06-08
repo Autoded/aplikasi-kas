@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uang Kas Kelas</title>
+    <title>Aplikasi Uang Kas Kelas</title>
     <!-- Memuat library Chart.js untuk membuat diagram -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -164,7 +164,7 @@
                 <button id="admin-logout-btn" class="admin-btn logout" style="display:none;">Logout</button>
                 <button id="reset-data-btn" class="admin-btn" style="display:none;">Reset Data</button>
             </div>
-            <h1>Uang Kas Kelas</h1>
+            <h1>Aplikasi Uang Kas Kelas</h1>
             <p id="kas-nominal-info"></p>
         </header>
 
@@ -219,7 +219,6 @@
         const BASE_ACADEMIC_YEAR = 2024;
         let studentData = [], expenseData = [], isAdmin = false, currentFilter = 'semua', financialChart;
         let elementToConfirmDelete = null;
-        let isDataLoaded = false;
         
         const dom = {
             grid: document.getElementById('student-grid'), searchInput: document.getElementById('searchInput'), monthSelector: document.getElementById('monthSelector'), semesterSelector: document.getElementById('semesterSelector'), yearSelector: document.getElementById('yearSelector'),
@@ -240,22 +239,20 @@
             const savedExpenses = localStorage.getItem('kasKelas_expenses');
             studentData = savedStudents ? JSON.parse(savedStudents) : [];
             expenseData = savedExpenses ? JSON.parse(savedExpenses) : [];
-            isDataLoaded = true;
         }
 
         function saveData() {
-            if (!isDataLoaded) return;
             localStorage.setItem('kasKelas_students', JSON.stringify(studentData));
             localStorage.setItem('kasKelas_expenses', JSON.stringify(expenseData));
         }
 
         function getPaymentStatus(student, month, year) {
+            if (!student.pembayaran) student.pembayaran = [];
             const payment = student.pembayaran.find(p => p.bulan === month && p.tahun === year);
             return payment ? payment.status : "Belum Lunas";
         }
 
         function renderStudentView() {
-            if (!isDataLoaded) return;
             const searchTerm = dom.searchInput.value.toLowerCase();
             const selectedSemester = parseInt(dom.semesterSelector.value) || 1;
             const selectedMonthName = dom.monthSelector.value || getMonthNames()[0];
@@ -298,8 +295,9 @@
             });
         }
         function renderReportView() {
-            if (!isDataLoaded) return;
             const selectedYear = parseInt(dom.yearSelector.value);
+            if (!selectedYear) return;
+            
             const monthlyIncome = {}, monthlyExpense = {};
             const monthNames = getMonthNames();
             monthNames.forEach(b => { monthlyIncome[b] = 0; monthlyExpense[b] = 0; });
@@ -323,15 +321,12 @@
                     deleteBtn.className = 'delete-expense-btn';
                     deleteBtn.title = 'Hapus';
                     deleteBtn.dataset.index = index;
-                    deleteBtn.innerHTML = '&times;';
                     li.querySelector('div').appendChild(deleteBtn);
                 }
                 dom.expense.list.appendChild(li);
             });
         }
         function updateSummary() {
-            if (!isDataLoaded) return;
-            // FIX: Use current date from new Date() for "this month" summary
             const today = new Date();
             const currentMonthName = getMonthNames()[today.getMonth()];
             const currentYear = today.getFullYear();
@@ -341,7 +336,10 @@
             dom.summary.paid.textContent = paidThisMonth;
             dom.summary.kas.textContent = `Rp ${(paidThisMonth * nominalKas).toLocaleString('id-ID')}`;
             
-            const totalIncome = studentData.reduce((total, s) => total + s.pembayaran.filter(p => p.status === 'Lunas').length * nominalKas, 0);
+            const totalIncome = studentData.reduce((total, s) => {
+                if (!s.pembayaran) return total;
+                return total + s.pembayaran.filter(p => p.status === 'Lunas').length * nominalKas;
+            }, 0);
             const totalExpense = expenseData.reduce((total, e) => total + e.amount, 0);
             const balance = totalIncome - totalExpense;
             dom.summary.balance.textContent = `Rp ${balance.toLocaleString('id-ID')}`;
@@ -352,6 +350,7 @@
             if (!isAdmin) return;
             const student = studentData.find(s => s.nis === nis);
             if (!student) return;
+            if (!student.pembayaran) student.pembayaran = [];
             let payment = student.pembayaran.find(p => p.bulan === month && p.tahun === year);
             if (payment) payment.status = payment.status === 'Lunas' ? 'Belum Lunas' : 'Lunas';
             else student.pembayaran.push({ tahun: year, bulan: month, status: 'Lunas' });
@@ -406,7 +405,7 @@
                 const { startYear, endYear } = getSemesterYears(i);
                 dom.semesterSelector.innerHTML += `<option value="${i}">Semester ${i} (${startYear}/${endYear})</option>`;
             }
-            const allYears = new Set([new Date().getFullYear(), ...studentData.flatMap(s => s.pembayaran.map(p => p.tahun)), ...expenseData.map(e => new Date(e.date).getFullYear())]);
+            const allYears = new Set([new Date().getFullYear(), ...studentData.flatMap(s => s.pembayaran ? s.pembayaran.map(p => p.tahun) : []), ...expenseData.map(e => new Date(e.date).getFullYear())]);
             const sortedYears = Array.from(allYears).sort((a,b) => b-a);
             
             dom.yearSelector.innerHTML = sortedYears.map(y => `<option value="${y}">${y}</option>`).join('');
@@ -414,9 +413,7 @@
             dom.monthSelector.value = getMonthNames()[new Date().getMonth()];
         }
         function initializeChart() {
-            if (financialChart) {
-                financialChart.destroy();
-            }
+            if (financialChart) financialChart.destroy();
             financialChart = new Chart(dom.chartCanvas, {
                 type: 'bar', data: { labels: getMonthNames(), datasets: [{ label: 'Pemasukan', data: [], backgroundColor: 'rgba(69, 123, 157, 0.7)' },{ label: 'Pengeluaran', data: [], backgroundColor: 'rgba(230, 57, 70, 0.7)' }] },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
@@ -424,9 +421,12 @@
         }
         
         function renderAll() {
+            populateSelectors();
             renderStudentView();
-            renderReportView();
             updateSummary();
+            if (dom.views.report.style.display === 'block') {
+                renderReportView();
+            }
         }
 
         function attachEventListeners() {
@@ -477,8 +477,6 @@
                 dom.views.report.style.display = 'block';
                 dom.nav.studentsBtn.classList.remove('active');
                 dom.nav.reportBtn.classList.add('active');
-                // FIX: Initialize and render chart only when tab is active
-                initializeChart();
                 renderReportView();
             });
             dom.printReportBtn.addEventListener('click', () => window.print());
@@ -490,8 +488,7 @@
                 const initial = name.split(' ').map(n => n[0]).join('').toUpperCase();
                 studentData.push({ nis, nama: name, foto: `https://placehold.co/120x120/EBF4FF/1D3557?text=${initial}`, pembayaran: [] });
                 saveData();
-                renderStudentView();
-                updateSummary();
+                renderAll();
                 dom.addStudentForm.reset(); showMessage("Siswa baru berhasil ditambah.");
             });
             dom.expense.form.addEventListener('submit', (e) => {
@@ -506,11 +503,10 @@
             });
         }
         
-        // --- Titik Mulai Aplikasi ---
         document.getElementById('kas-nominal-info').textContent = `Nominal: Rp ${nominalKas.toLocaleString('id-ID')} / bulan`;
         attachEventListeners();
         loadData();
-        populateSelectors();
+        initializeChart();
         renderAll();
     });
     </script>

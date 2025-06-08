@@ -209,20 +209,8 @@
     </div>
     <div id="message-box"></div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- KONFIGURASI APLIKASI ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kas-kelas-default';
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const docRef = doc(db, "artifacts", appId, "public/data/kas-kelas-data", "main");
-
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
         const ADMIN_PASSWORD = "admin123";
         const nominalKas = 20000;
         const SEMESTER_START_MONTH = 8; // September (0-indexed)
@@ -232,7 +220,6 @@
         let elementToConfirmDelete = null;
         let isDataLoaded = false;
         
-        // --- Elemen DOM ---
         const dom = {
             grid: document.getElementById('student-grid'), searchInput: document.getElementById('searchInput'), monthSelector: document.getElementById('monthSelector'), semesterSelector: document.getElementById('semesterSelector'), yearSelector: document.getElementById('yearSelector'),
             summary: { students: document.getElementById('summary-total-students'), paid: document.getElementById('summary-paid-students'), kas: document.getElementById('summary-total-kas'), balance: document.getElementById('summary-total-balance') },
@@ -247,27 +234,30 @@
             printReportBtn: document.getElementById('print-report-btn'),
         };
         
-        // --- Manajemen Data Firestore ---
-        async function updateFirestore() {
-            if (!isDataLoaded) return;
-            try {
-                await setDoc(docRef, { students: studentData, expenses: expenseData });
-            } catch (error) {
-                console.error("Error updating document: ", error);
-                showMessage("Gagal menyimpan data ke database.", "error");
-            }
+        function loadData() {
+            const savedStudents = localStorage.getItem('kasKelas_students');
+            const savedExpenses = localStorage.getItem('kasKelas_expenses');
+            studentData = savedStudents ? JSON.parse(savedStudents) : [];
+            expenseData = savedExpenses ? JSON.parse(savedExpenses) : [];
+            isDataLoaded = true;
         }
 
-        // --- Logika Render & UI ---
+        function saveData() {
+            if (!isDataLoaded) return;
+            localStorage.setItem('kasKelas_students', JSON.stringify(studentData));
+            localStorage.setItem('kasKelas_expenses', JSON.stringify(expenseData));
+        }
+
         function getPaymentStatus(student, month, year) {
             const payment = student.pembayaran.find(p => p.bulan === month && p.tahun === year);
             return payment ? payment.status : "Belum Lunas";
         }
+
         function renderStudentView() {
             if (!isDataLoaded) return;
             const searchTerm = dom.searchInput.value.toLowerCase();
-            const selectedSemester = parseInt(dom.semesterSelector.value);
-            const selectedMonthName = dom.monthSelector.value;
+            const selectedSemester = parseInt(dom.semesterSelector.value) || 1;
+            const selectedMonthName = dom.monthSelector.value || getMonthNames()[0];
             const monthIndex = getMonthNames().indexOf(selectedMonthName);
             
             const { startYear } = getSemesterYears(selectedSemester);
@@ -281,23 +271,27 @@
             filteredStudents.forEach(student => {
                 const card = document.createElement('div');
                 card.className = 'student-card';
-
                 const status = getPaymentStatus(student, selectedMonthName, paymentYear);
                 const statusClass = status === 'Lunas' ? 'lunas' : 'belum-lunas';
                 const editableClass = isAdmin ? 'editable' : '';
                 
-                card.innerHTML = `<div class="student-info"><img src="${student.foto}" alt="Foto ${student.nama}"><div class="student-details"><h2>${student.nama}</h2><p>NIS: ${student.nis}</p></div></div><div class="payment-status"><p>Status <strong>${selectedMonthName} ${paymentYear}</strong></p><div class="uangkas-status ${statusClass} ${editableClass}">${status}</div></div>`;
+                card.innerHTML = `
+                    <div class="student-info">
+                        <img src="${student.foto}" alt="Foto ${student.nama}">
+                        <div class="student-details"><h2>${student.nama}</h2><p>NIS: ${student.nis}</p></div>
+                    </div>
+                    <div class="payment-status">
+                        <p>Status <strong>${selectedMonthName} ${paymentYear}</strong></p>
+                        <div class="uangkas-status ${statusClass} ${editableClass}" data-nis="${student.nis}" data-month="${selectedMonthName}" data-year="${paymentYear}">${status}</div>
+                    </div>`;
                 
                 if (isAdmin) {
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'delete-student-btn';
                     deleteBtn.title = 'Hapus Siswa';
                     deleteBtn.innerHTML = '&times;';
-                    deleteBtn.addEventListener('click', () => confirmDelete(deleteBtn, 'student', student.nis));
+                    deleteBtn.dataset.nis = student.nis;
                     card.prepend(deleteBtn);
-
-                    const statusDiv = card.querySelector('.uangkas-status');
-                    statusDiv.addEventListener('click', () => togglePaymentStatus(student.nis, selectedMonthName, paymentYear));
                 }
                 dom.grid.appendChild(card);
             });
@@ -319,17 +313,16 @@
             }
             
             dom.expense.list.innerHTML = '';
-            expenseData.filter(e => new Date(e.date).getFullYear() === selectedYear).forEach((expense) => {
+            expenseData.filter(e => new Date(e.date).getFullYear() === selectedYear).forEach((expense, index) => {
                 const li = document.createElement('li');
-                const originalIndex = expenseData.findIndex(original => original.date === expense.date && original.desc === expense.desc);
                 li.innerHTML = `<span class="expense-desc">${expense.desc}</span><div><span class="expense-amount">Rp ${expense.amount.toLocaleString('id-ID')}</span></div>`;
                 
                 if (isAdmin) {
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'delete-expense-btn';
                     deleteBtn.title = 'Hapus';
+                    deleteBtn.dataset.index = index;
                     deleteBtn.innerHTML = '&times;';
-                    deleteBtn.addEventListener('click', () => confirmDelete(deleteBtn, 'expense', originalIndex));
                     li.querySelector('div').appendChild(deleteBtn);
                 }
                 dom.expense.list.appendChild(li);
@@ -337,7 +330,8 @@
         }
         function updateSummary() {
             if (!isDataLoaded) return;
-            const { startYear } = getSemesterYears(parseInt(dom.semesterSelector.value) || 1);
+            const selectedSemester = parseInt(dom.semesterSelector.value) || 1;
+            const { startYear } = getSemesterYears(selectedSemester);
             const currentMonthName = getMonthNames()[new Date().getMonth()];
             const currentPaymentYear = new Date().getMonth() >= SEMESTER_START_MONTH ? startYear : startYear + 1;
             
@@ -360,7 +354,9 @@
             let payment = student.pembayaran.find(p => p.bulan === month && p.tahun === year);
             if (payment) payment.status = payment.status === 'Lunas' ? 'Belum Lunas' : 'Lunas';
             else student.pembayaran.push({ tahun: year, bulan: month, status: 'Lunas' });
-            updateFirestore();
+            saveData();
+            renderStudentView();
+            updateSummary();
         }
         function showMessage(message, type = 'success') {
             dom.messageBox.textContent = message;
@@ -375,7 +371,10 @@
                    studentData = [];
                    expenseData = [];
                 }
-                updateFirestore();
+                saveData();
+                renderStudentView();
+                renderReportView();
+                updateSummary();
                 showMessage("Data berhasil dihapus.", "success");
             } else {
                 if (elementToConfirmDelete) { elementToConfirmDelete.classList.remove('confirm-delete'); elementToConfirmDelete.innerHTML = elementToConfirmDelete.dataset.originalText; }
@@ -398,7 +397,6 @@
             if (dom.views.report.style.display === 'block') renderReportView();
         }
 
-        // --- Inisialisasi & Helper ---
         function getMonthNames() { return ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]; }
         function getSemesterYears(semester) {
             const yearOffset = Math.floor((semester - 1) / 2);
@@ -424,47 +422,32 @@
             });
         }
         
-        async function initializeAppWithAuth() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+        function attachEventListeners() {
+            document.body.addEventListener('click', function(e) {
+                const statusDiv = e.target.closest('.uangkas-status.editable');
+                if (statusDiv) {
+                    const { nis, month, year } = statusDiv.dataset;
+                    togglePaymentStatus(nis, month, parseInt(year));
+                    return;
                 }
-
-                onSnapshot(docRef, (doc) => {
-                    if (doc.exists()) {
-                        const data = doc.data();
-                        studentData = data.students || [];
-                        expenseData = data.expenses || [];
-                    } else {
-                        studentData = [];
-                        expenseData = [];
-                        console.log("No such document! Creating one.");
-                        updateFirestore(); 
-                    }
-
-                    if (!isDataLoaded) {
-                        populateSelectors();
-                        initializeChart();
-                        isDataLoaded = true;
-                    }
-                    
-                    renderStudentView();
-                    renderReportView();
-                    updateSummary();
-                });
-
-            } catch (error) {
-                console.error("Firebase Auth or Snapshot Error:", error);
-                showMessage("Gagal terhubung ke database.", "error");
-            }
-        }
-
-        // --- Event Listeners ---
-        window.onload = () => {
-            document.getElementById('kas-nominal-info').textContent = `Nominal: Rp ${nominalKas.toLocaleString('id-ID')} / bulan`;
-            initializeAppWithAuth();
+                const deleteStudentBtn = e.target.closest('.delete-student-btn');
+                if (deleteStudentBtn) {
+                    const { nis } = deleteStudentBtn.dataset;
+                    confirmDelete(deleteStudentBtn, 'student', nis);
+                    return;
+                }
+                const deleteExpenseBtn = e.target.closest('.delete-expense-btn');
+                if (deleteExpenseBtn) {
+                    const { index } = deleteExpenseBtn.dataset;
+                    confirmDelete(deleteExpenseBtn, 'expense', parseInt(index));
+                    return;
+                }
+                if (elementToConfirmDelete && !elementToConfirmDelete.contains(e.target)) {
+                    elementToConfirmDelete.classList.remove('confirm-delete');
+                    elementToConfirmDelete.innerHTML = elementToConfirmDelete.dataset.originalText;
+                    elementToConfirmDelete = null;
+                }
+            });
 
             dom.admin.loginBtn.addEventListener('click', () => { dom.admin.loginForm.style.display = 'flex'; dom.admin.loginBtn.style.display = 'none'; });
             dom.admin.loginForm.addEventListener('submit', (e) => {
@@ -491,7 +474,9 @@
                 if (studentData.some(s => s.nis === nis)) return showMessage("NIS sudah terdaftar.", "error");
                 const initial = name.split(' ').map(n => n[0]).join('').toUpperCase();
                 studentData.push({ nis, nama: name, foto: `https://placehold.co/120x120/EBF4FF/1D3557?text=${initial}`, pembayaran: [] });
-                updateFirestore();
+                saveData();
+                renderStudentView();
+                updateSummary();
                 dom.addStudentForm.reset(); showMessage("Siswa baru berhasil ditambah.");
             });
             dom.expense.form.addEventListener('submit', (e) => {
@@ -499,16 +484,23 @@
                 const desc = document.getElementById('expense-desc').value, amount = parseInt(document.getElementById('expense-amount').value);
                 if (!desc || !amount || amount <= 0) return showMessage("Data pengeluaran tidak valid.", "error");
                 expenseData.push({ desc, amount, date: new Date().toISOString() });
-                updateFirestore();
+                saveData();
+                renderReportView();
+                updateSummary();
                 dom.expense.form.reset(); showMessage("Pengeluaran berhasil ditambah.");
             });
-            document.addEventListener('click', (e) => {
-                if (elementToConfirmDelete && !elementToConfirmDelete.contains(e.target)) {
-                    elementToConfirmDelete.classList.remove('confirm-delete');
-                    elementToConfirmDelete.innerHTML = elementToConfirmDelete.dataset.originalText; elementToConfirmDelete = null;
-                }
-            });
-        };
+        }
+        
+        // Final Fix: Use DOMContentLoaded for safer script initialization
+        document.getElementById('kas-nominal-info').textContent = `Nominal: Rp ${nominalKas.toLocaleString('id-ID')} / bulan`;
+        attachEventListeners();
+        loadData();
+        populateSelectors();
+        initializeChart();
+        renderStudentView();
+        renderReportView();
+        updateSummary();
+    });
     </script>
 </body>
 </html>

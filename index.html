@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kas Kelas</title>
+    <title>Uang Kas Kelas</title>
     <!-- Memuat library Chart.js untuk membuat diagram -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -107,7 +107,8 @@
         .uangkas-status.belum-lunas { background-color: #f8d7da; color: #721c24; }
         
         #report-view { display: none; }
-        .report-layout { display: grid; grid-template-columns: 1fr; gap: 30px; }
+        .report-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+        @media (max-width: 900px) { .report-layout { grid-template-columns: 1fr; } }
         .chart-container, .expense-container { background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         #expense-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
         #expense-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #f0f0f0; }
@@ -330,12 +331,12 @@
         }
         function updateSummary() {
             if (!isDataLoaded) return;
-            const selectedSemester = parseInt(dom.semesterSelector.value) || 1;
-            const { startYear } = getSemesterYears(selectedSemester);
-            const currentMonthName = getMonthNames()[new Date().getMonth()];
-            const currentPaymentYear = new Date().getMonth() >= SEMESTER_START_MONTH ? startYear : startYear + 1;
+            // FIX: Use current date from new Date() for "this month" summary
+            const today = new Date();
+            const currentMonthName = getMonthNames()[today.getMonth()];
+            const currentYear = today.getFullYear();
             
-            const paidThisMonth = studentData.filter(s => getPaymentStatus(s, currentMonthName, currentPaymentYear) === 'Lunas').length;
+            const paidThisMonth = studentData.filter(s => getPaymentStatus(s, currentMonthName, currentYear) === 'Lunas').length;
             dom.summary.students.textContent = studentData.length;
             dom.summary.paid.textContent = paidThisMonth;
             dom.summary.kas.textContent = `Rp ${(paidThisMonth * nominalKas).toLocaleString('id-ID')}`;
@@ -372,9 +373,7 @@
                    expenseData = [];
                 }
                 saveData();
-                renderStudentView();
-                renderReportView();
-                updateSummary();
+                renderAll();
                 showMessage("Data berhasil dihapus.", "success");
             } else {
                 if (elementToConfirmDelete) { elementToConfirmDelete.classList.remove('confirm-delete'); elementToConfirmDelete.innerHTML = elementToConfirmDelete.dataset.originalText; }
@@ -393,8 +392,7 @@
             dom.admin.resetBtn.style.display = enabled ? 'flex' : 'none';
             dom.views.studentManagement.style.display = enabled ? 'block' : 'none';
             dom.expense.form.classList.toggle('visible', enabled);
-            renderStudentView();
-            if (dom.views.report.style.display === 'block') renderReportView();
+            renderAll();
         }
 
         function getMonthNames() { return ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]; }
@@ -416,12 +414,21 @@
             dom.monthSelector.value = getMonthNames()[new Date().getMonth()];
         }
         function initializeChart() {
+            if (financialChart) {
+                financialChart.destroy();
+            }
             financialChart = new Chart(dom.chartCanvas, {
                 type: 'bar', data: { labels: getMonthNames(), datasets: [{ label: 'Pemasukan', data: [], backgroundColor: 'rgba(69, 123, 157, 0.7)' },{ label: 'Pengeluaran', data: [], backgroundColor: 'rgba(230, 57, 70, 0.7)' }] },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
             });
         }
         
+        function renderAll() {
+            renderStudentView();
+            renderReportView();
+            updateSummary();
+        }
+
         function attachEventListeners() {
             document.body.addEventListener('click', function(e) {
                 const statusDiv = e.target.closest('.uangkas-status.editable');
@@ -465,7 +472,15 @@
             dom.searchInput.addEventListener('input', renderStudentView);
             dom.filterButtons.forEach(btn => btn.addEventListener('click', () => { dom.filterButtons.forEach(b => b.classList.remove('active')); btn.classList.add('active'); currentFilter = btn.dataset.filter; renderStudentView(); }));
             dom.nav.studentsBtn.addEventListener('click', () => { dom.views.student.style.display = 'block'; dom.views.report.style.display = 'none'; dom.nav.studentsBtn.classList.add('active'); dom.nav.reportBtn.classList.remove('active'); });
-            dom.nav.reportBtn.addEventListener('click', () => { dom.views.student.style.display = 'none'; dom.views.report.style.display = 'block'; dom.nav.studentsBtn.classList.remove('active'); dom.nav.reportBtn.classList.add('active'); renderReportView(); });
+            dom.nav.reportBtn.addEventListener('click', () => {
+                dom.views.student.style.display = 'none';
+                dom.views.report.style.display = 'block';
+                dom.nav.studentsBtn.classList.remove('active');
+                dom.nav.reportBtn.classList.add('active');
+                // FIX: Initialize and render chart only when tab is active
+                initializeChart();
+                renderReportView();
+            });
             dom.printReportBtn.addEventListener('click', () => window.print());
             dom.addStudentForm.addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -491,15 +506,12 @@
             });
         }
         
-        // Final Fix: Use DOMContentLoaded for safer script initialization
+        // --- Titik Mulai Aplikasi ---
         document.getElementById('kas-nominal-info').textContent = `Nominal: Rp ${nominalKas.toLocaleString('id-ID')} / bulan`;
         attachEventListeners();
         loadData();
         populateSelectors();
-        initializeChart();
-        renderStudentView();
-        renderReportView();
-        updateSummary();
+        renderAll();
     });
     </script>
 </body>

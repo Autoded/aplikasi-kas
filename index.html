@@ -415,7 +415,28 @@
         function initializeChart() {
             if (financialChart) financialChart.destroy();
             financialChart = new Chart(dom.chartCanvas, {
-                type: 'bar', data: { labels: getMonthNames(), datasets: [{ label: 'Pemasukan', data: [], backgroundColor: 'rgba(69, 123, 157, 0.7)' },{ label: 'Pengeluaran', data: [], backgroundColor: 'rgba(230, 57, 70, 0.7)' }] },
+                type: 'line', // Changed to line chart for simplicity
+                data: { 
+                    labels: getMonthNames(), 
+                    datasets: [
+                        { 
+                            label: 'Pemasukan', 
+                            data: [], 
+                            borderColor: 'rgba(69, 123, 157, 1)',
+                            backgroundColor: 'rgba(69, 123, 157, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        { 
+                            label: 'Pengeluaran', 
+                            data: [], 
+                            borderColor: 'rgba(230, 57, 70, 1)',
+                            backgroundColor: 'rgba(230, 57, 70, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ] 
+                },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
             });
         }

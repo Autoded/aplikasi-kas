@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Uang Kas Kelas</title>
-    <!-- Memuat library Chart.js untuk membuat diagram -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -109,7 +107,16 @@
         #report-view { display: none; }
         .report-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
         @media (max-width: 900px) { .report-layout { grid-template-columns: 1fr; } }
-        .chart-container, .expense-container { background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .report-summary-container { background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
+        .report-numbers { display: flex; justify-content: space-around; margin-top: 20px; flex-wrap: wrap; gap: 10px; }
+        .report-number-item h3 { color: #457b9d; font-size: 1.2rem; margin-top: 0; margin-bottom: 10px; }
+        .report-number-item p { font-size: 2rem; font-weight: 700; margin: 0; }
+        .income-color { color: #2a9d8f; }
+        .expense-color { color: #e63946; }
+        .balance-color { color: #1d3557; }
+
+        .expense-container { background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         #expense-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
         #expense-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #f0f0f0; }
         .expense-desc { flex-grow: 1; }
@@ -139,7 +146,7 @@
             .report-layout {
                 grid-template-columns: 1fr;
             }
-            .chart-container, .expense-container {
+            .report-summary-container, .expense-container {
                 box-shadow: none;
                 border: 1px solid #ccc;
                 page-break-inside: avoid;
@@ -203,7 +210,23 @@
                  <button id="print-report-btn" class="admin-btn print">Print Laporan</button>
             </div>
             <div class="report-layout">
-                <div class="chart-container"><h2>Laporan Pemasukan vs Pengeluaran</h2><canvas id="financialChart"></canvas></div>
+                <div class="report-summary-container">
+                    <h2>Ringkasan Keuangan Tahun <span id="report-year-title"></span></h2>
+                    <div class="report-numbers">
+                        <div class="report-number-item">
+                            <h3>Pemasukan</h3>
+                            <p id="report-income" class="income-color">Rp 0</p>
+                        </div>
+                        <div class="report-number-item">
+                            <h3>Pengeluaran</h3>
+                            <p id="report-expense" class="expense-color">Rp 0</p>
+                        </div>
+                        <div class="report-number-item">
+                            <h3>Saldo Tahun Ini</h3>
+                            <p id="report-balance" class="balance-color">Rp 0</p>
+                        </div>
+                    </div>
+                </div>
                 <div class="expense-container"><h2>Daftar Pengeluaran</h2><ul id="expense-list"></ul><form id="add-expense-form"><h3 >Tambah Pengeluaran</h3><input type="text" id="expense-desc" placeholder="Keterangan" required><input type="number" id="expense-amount" placeholder="Jumlah" required><button type="submit">Tambah</button></form></div>
             </div>
         </section>
@@ -217,7 +240,7 @@
         const SEMESTER_START_MONTH = 8; // September (0-indexed)
         const SEMESTER_COUNT = 8;
         const BASE_ACADEMIC_YEAR = 2024;
-        let studentData = [], expenseData = [], isAdmin = false, currentFilter = 'semua', financialChart;
+        let studentData = [], expenseData = [], isAdmin = false, currentFilter = 'semua';
         let elementToConfirmDelete = null;
         
         const dom = {
@@ -226,8 +249,8 @@
             admin: { loginBtn: document.getElementById('admin-login-btn'), logoutBtn: document.getElementById('admin-logout-btn'), resetBtn: document.getElementById('reset-data-btn'), indicator: document.getElementById('admin-indicator'), loginForm: document.getElementById('login-form') },
             nav: { studentsBtn: document.getElementById('nav-students-btn'), reportBtn: document.getElementById('nav-report-btn') },
             views: { student: document.getElementById('student-view'), report: document.getElementById('report-view'), studentManagement: document.getElementById('student-management-view') },
-            chartCanvas: document.getElementById('financialChart').getContext('2d'),
             expense: { list: document.getElementById('expense-list'), form: document.getElementById('add-expense-form') },
+            report: { yearTitle: document.getElementById('report-year-title'), income: document.getElementById('report-income'), expense: document.getElementById('report-expense'), balance: document.getElementById('report-balance') },
             addStudentForm: document.getElementById('add-student-form'),
             messageBox: document.getElementById('message-box'),
             filterButtons: document.querySelectorAll('.filter-btn'),
@@ -298,19 +321,24 @@
             const selectedYear = parseInt(dom.yearSelector.value);
             if (!selectedYear) return;
             
-            const monthlyIncome = {}, monthlyExpense = {};
-            const monthNames = getMonthNames();
-            monthNames.forEach(b => { monthlyIncome[b] = 0; monthlyExpense[b] = 0; });
+            dom.report.yearTitle.textContent = selectedYear;
+
+            const yearIncome = studentData.reduce((total, s) => {
+                const paidInYear = s.pembayaran.filter(p => p.status === 'Lunas' && p.tahun === selectedYear).length;
+                return total + (paidInYear * nominalKas);
+            }, 0);
+
+            const yearExpense = expenseData.reduce((total, e) => {
+                return new Date(e.date).getFullYear() === selectedYear ? total + e.amount : total;
+            }, 0);
+
+            const yearBalance = yearIncome - yearExpense;
             
-            studentData.forEach(s => s.pembayaran.forEach(p => { if (p.status === 'Lunas' && p.tahun === selectedYear) monthlyIncome[p.bulan] += nominalKas; }));
-            expenseData.forEach(e => { const date = new Date(e.date); if (date.getFullYear() === selectedYear) { const month = monthNames[date.getMonth()]; if (month) monthlyExpense[month] += e.amount; }});
-            
-            if (financialChart) {
-                financialChart.data.datasets[0].data = Object.values(monthlyIncome);
-                financialChart.data.datasets[1].data = Object.values(monthlyExpense);
-                financialChart.update();
-            }
-            
+            dom.report.income.textContent = `Rp ${yearIncome.toLocaleString('id-ID')}`;
+            dom.report.expense.textContent = `Rp ${yearExpense.toLocaleString('id-ID')}`;
+            dom.report.balance.textContent = `Rp ${yearBalance.toLocaleString('id-ID')}`;
+            dom.report.balance.className = `balance-color ${yearBalance < 0 ? 'expense-color' : 'income-color'}`;
+
             dom.expense.list.innerHTML = '';
             expenseData.filter(e => new Date(e.date).getFullYear() === selectedYear).forEach((expense, index) => {
                 const li = document.createElement('li');
@@ -412,34 +440,6 @@
             dom.monthSelector.innerHTML = getMonthNames().map(m => `<option value="${m}">${m}</option>`).join('');
             dom.monthSelector.value = getMonthNames()[new Date().getMonth()];
         }
-        function initializeChart() {
-            if (financialChart) financialChart.destroy();
-            financialChart = new Chart(dom.chartCanvas, {
-                type: 'line', // Changed to line chart for simplicity
-                data: { 
-                    labels: getMonthNames(), 
-                    datasets: [
-                        { 
-                            label: 'Pemasukan', 
-                            data: [], 
-                            borderColor: 'rgba(69, 123, 157, 1)',
-                            backgroundColor: 'rgba(69, 123, 157, 0.1)',
-                            fill: true,
-                            tension: 0.3
-                        },
-                        { 
-                            label: 'Pengeluaran', 
-                            data: [], 
-                            borderColor: 'rgba(230, 57, 70, 1)',
-                            backgroundColor: 'rgba(230, 57, 70, 0.1)',
-                            fill: true,
-                            tension: 0.3
-                        }
-                    ] 
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
-        }
         
         function renderAll() {
             populateSelectors();
@@ -524,10 +524,10 @@
             });
         }
         
+        // --- Titik Mulai Aplikasi ---
         document.getElementById('kas-nominal-info').textContent = `Nominal: Rp ${nominalKas.toLocaleString('id-ID')} / bulan`;
         attachEventListeners();
         loadData();
-        initializeChart();
         renderAll();
     });
     </script>
